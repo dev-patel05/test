@@ -40,16 +40,41 @@ app.get('/api/info', (req, res) => {
 });
 
 app.get('/api/items', (req, res) => {
-  logger.info('Items list requested', { endpoint: '/api/items', itemCount: 3 });
+  const category = req.query.category;
+  const items = [
+    { id: 1, name: 'Item Alpha', status: 'active', category: 'electronics' },
+    { id: 2, name: 'Item Beta', status: 'active', category: 'clothing' },
+    { id: 3, name: 'Item Gamma', status: 'inactive', category: 'electronics' }
+  ];
+
+  // BUG: category.toLowerCase() throws TypeError if category is undefined
+  // Should be: if (category) { ... } or category?.toLowerCase()
+  const filtered = items.filter(i => i.category === category.toLowerCase());
+
+  logger.info('Items list requested', { endpoint: '/api/items', itemCount: filtered.length, category });
   res.json({
-    items: [
-      { id: 1, name: 'Item Alpha', status: 'active' },
-      { id: 2, name: 'Item Beta', status: 'active' },
-      { id: 3, name: 'Item Gamma', status: 'inactive' }
-    ],
+    items: filtered,
     servedBy: os.hostname()
   });
 });
+
+// ─── Orders Endpoint ─────────────────────────────────────────────────
+app.get('/api/orders', async (req, res) => {
+  const userId = req.query.userId;
+
+  // BUG: No await, and no try/catch — unhandled promise rejection crashes Node
+  const orders = fetchOrdersFromDB(userId);
+
+  logger.info('Orders fetched', { endpoint: '/api/orders', userId, count: orders.length });
+  res.json({ orders, userId });
+});
+
+// Simulates a DB call that always rejects
+async function fetchOrdersFromDB(userId) {
+  return new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`DB connection refused for user ${userId}`)), 100)
+  );
+}
 
 app.post('/api/echo', (req, res) => {
   logger.info('Echo request received', {
