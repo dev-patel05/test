@@ -8,6 +8,7 @@
 const { NodeSDK } = require('@opentelemetry/sdk-node');
 const { Resource } = require('@opentelemetry/resources');
 const { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION, ATTR_DEPLOYMENT_ENVIRONMENT } = require('@opentelemetry/semantic-conventions');
+const { SpanStatusCode } = require('@opentelemetry/api');
 
 // Trace exporter → SigNoz
 const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
@@ -66,6 +67,26 @@ const sdk = new NodeSDK({
       // Instrument HTTP requests → traces appear in SigNoz APM
       '@opentelemetry/instrumentation-http': {
         enabled: true,
+        // ─── Mark 5XX responses as ERROR spans in SigNoz traces ──────
+        responseHook: (span, response) => {
+          const status = response.statusCode || (response.status);
+          if (status >= 500) {
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: `HTTP ${status} response`,
+            });
+            span.setAttribute('http.error', true);
+            span.setAttribute('error', true);
+          }
+        },
+        // ─── Record exceptions thrown during request handling ─────────
+        applyCustomAttributesOnSpan: (span, request, response) => {
+          const status = response.statusCode || response.status;
+          if (status >= 500) {
+            span.setAttribute('http.status_code', status);
+            span.setAttribute('error.type', 'HTTPError');
+          }
+        },
       },
       // Instrument Express routes → route-level traces
       '@opentelemetry/instrumentation-express': {

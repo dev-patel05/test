@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const os = require('os');
 const logger = require('./logger');
+const { trace, SpanStatusCode } = require('@opentelemetry/api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,15 +48,30 @@ app.get('/api/items', (req, res) => {
     { id: 3, name: 'Item Gamma', status: 'inactive', category: 'electronics' }
   ];
 
-  // BUG: category.toLowerCase() throws TypeError if category is undefined
-  // Should be: if (category) { ... } or category?.toLowerCase()
-  const filtered = items.filter(i => i.category === category.toLowerCase());
-
-  logger.info('Items list requested', { endpoint: '/api/items', itemCount: filtered.length, category });
-  res.json({
-    items: filtered,
-    servedBy: os.hostname()
-  });
+  try {
+    // BUG: category.toLowerCase() throws TypeError if category is undefined
+    const filtered = items.filter(i => i.category === category.toLowerCase());
+    logger.info('Items list requested', { endpoint: '/api/items', itemCount: filtered.length, category });
+    res.json({ items: filtered, servedBy: os.hostname() });
+  } catch (err) {
+    // Explicitly mark the current span as ERROR so SigNoz traces show it
+    const span = trace.getActiveSpan();
+    if (span) {
+      span.recordException(err);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+      span.setAttribute('error.type', err.constructor.name);
+      span.setAttribute('error.message', err.message);
+      span.setAttribute('error.stack', err.stack);
+    }
+    logger.error('TypeError in /api/items', {
+      errorType: err.constructor.name,
+      message: err.message,
+      stack: err.stack,
+      endpoint: '/api/items',
+      category,
+    });
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+  }
 });
 
 // ─── Orders Endpoint ─────────────────────────────────────────────────
@@ -211,6 +227,14 @@ app.get('/api/error-test', (req, res) => {
 
 // ─── Global Error Handler ────────────────────────────────────────────
 app.use((err, req, res, next) => {
+  // Explicitly mark span as ERROR so it shows in SigNoz traces
+  const span = trace.getActiveSpan();
+  if (span) {
+    span.recordException(err);
+    span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+    span.setAttribute('error.type', err.constructor.name);
+    span.setAttribute('error.message', err.message);
+  }
   logger.error('Unhandled error', {
     error: err.message,
     stack: err.stack,
