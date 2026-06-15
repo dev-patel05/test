@@ -12,6 +12,32 @@ const SERVICE_NAME = 'test';
 app.use(cors());
 app.use(express.json());
 
+// ─── Propagate HTTP attributes to active Express span ────────────────
+app.use((req, res, next) => {
+  const originalEnd = res.end;
+  res.end = function (...args) {
+    const span = trace.getActiveSpan();
+    if (span) {
+      const code = res.statusCode;
+      span.setAttribute('http.status_code', code);
+      span.setAttribute('http.response.status_code', code);
+      span.setAttribute('http.method', req.method);
+      span.setAttribute('http.request.method', req.method);
+      span.setAttribute('http.target', req.path);
+      if (code >= 500) {
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: `HTTP ${code} response`,
+        });
+        span.setAttribute('error', true);
+        span.setAttribute('http.error', true);
+      }
+    }
+    return originalEnd.apply(this, args);
+  };
+  next();
+});
+
 // ─── Request Logging Middleware (logs every request to SigNoz) ────────
 app.use(logger.requestLogger);
 

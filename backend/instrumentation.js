@@ -77,13 +77,18 @@ const sdk = new NodeSDK({
             });
             span.setAttribute('http.error', true);
             span.setAttribute('error', true);
+            span.setAttribute('http.status_code', status);
+            span.setAttribute('http.response.status_code', status);
           }
         },
         // ─── Record exceptions thrown during request handling ─────────
         applyCustomAttributesOnSpan: (span, request, response) => {
           const status = response.statusCode || response.status;
-          if (status >= 500) {
+          if (status) {
             span.setAttribute('http.status_code', status);
+            span.setAttribute('http.response.status_code', status);
+          }
+          if (status >= 500) {
             span.setAttribute('error.type', 'HTTPError');
           }
         },
