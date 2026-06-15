@@ -26,46 +26,6 @@ app.use((req, res, next) => {
       span.setAttribute('http.target', req.path);
       if (code >= 500) {
         span.setStatus({
-          code: SpanStatusCode.ERROR,
-          message: `HTTP ${code} response`,
-        });
-        span.setAttribute('error', true);
-        span.setAttribute('http.error', true);
-      }
-    }
-    return originalEnd.apply(this, args);
-  };
-  next();
-});
-
-// ─── Request Logging Middleware (logs every request to SigNoz) ────────
-app.use(logger.requestLogger);
-
-// ─── Health Check Endpoint (used by ALB) ─────────────────────────────
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'healthy',
-    service: SERVICE_NAME,
-    timestamp: new Date().toISOString(),
-    hostname: os.hostname(),
-    uptime: process.uptime()
-  });
-});
-
-// ─── Sample API Endpoints ────────────────────────────────────────────
-app.get('/api/info', (req, res) => {
-  logger.info('Server info requested', { endpoint: '/api/info' });
-  res.json({
-    service: SERVICE_NAME,
-    version: '1.0.0',
-    hostname: os.hostname(),
-    platform: os.platform(),
-    nodeVersion: process.version,
-    memoryUsage: process.memoryUsage(),
-    timestamp: new Date().toISOString()
-  });
-});
-
 app.get('/api/items', (req, res) => {
   const category = req.query.category;
   const items = [
@@ -75,8 +35,7 @@ app.get('/api/items', (req, res) => {
   ];
 
   try {
-    // BUG: category.toLowerCase() throws TypeError if category is undefined
-    const filtered = items.filter(i => i.category === category.toLowerCase());
+    const filtered = items.filter(i => i.category === (category ? category.toLowerCase() : ''));
     logger.info('Items list requested', { endpoint: '/api/items', itemCount: filtered.length, category });
     res.json({ items: filtered, servedBy: os.hostname() });
   } catch (err) {
@@ -99,33 +58,6 @@ app.get('/api/items', (req, res) => {
     res.status(500).json({ error: 'Internal Server Error', message: err.message });
   }
 });
-
-// ─── Orders Endpoint ─────────────────────────────────────────────────
-app.get('/api/orders', async (req, res) => {
-  const userId = req.query.userId;
-
-  // BUG: No await, and no try/catch — unhandled promise rejection crashes Node
-  const orders = fetchOrdersFromDB(userId);
-
-  logger.info('Orders fetched', { endpoint: '/api/orders', userId, count: orders.length });
-  res.json({ orders, userId });
-});
-
-// Simulates a DB call that always rejects
-async function fetchOrdersFromDB(userId) {
-  return new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`DB connection refused for user ${userId}`)), 100)
-  );
-}
-
-app.post('/api/echo', (req, res) => {
-  logger.info('Echo request received', {
-    endpoint: '/api/echo',
-    payloadSize: JSON.stringify(req.body).length,
-    payload: req.body
-  });
-  res.json({
-    received: req.body,
     echoedAt: new Date().toISOString(),
     servedBy: os.hostname()
   });
