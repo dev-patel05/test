@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ECS Sample Application - Frontend Dashboard for testing AWS ECS deployment with Application Load Balancer">
+  <title>ECS Dashboard - Load Balancer Test</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ─── Header ──────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <h1>ECS Dashboard</h1>
+      </div>
+      <div class="header-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ─── Main Content ────────────────────────────────────────────── -->
+  <main class="main">
+    <!-- Stats Row -->
+    <section class="stats-row">
+      <div class="stat-card" id="healthCard">
+        <div class="stat-icon">💚</div>
+        <div class="stat-info">
+          <span class="stat-label">Health Status</span>
+          <span class="stat-value" id="healthStatus">--</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🖥️</div>
+        <div class="stat-info">
+          <span class="stat-label">Container ID</span>
+          <span class="stat-value mono" id="containerId">--</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏱️</div>
+        <div class="stat-info">
+          <span class="stat-label">Uptime</span>
+          <span class="stat-value" id="uptime">--</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-info">
+          <span class="stat-label">Requests Sent</span>
+          <span class="stat-value" id="requestCount">0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Two Column Layout -->
+    <div class="content-grid">
+      <!-- Load Balancer Test Panel -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2>🔄 Load Balancer Test</h2>
+          <p>Hit the endpoint multiple times to see different container IDs when multiple tasks are running</p>
+        </div>
+        <div class="panel-body">
+          <div class="button-row">
+            <button class="btn btn-primary" id="lbTestBtn" onclick="testLoadBalancer()">
+              Send Request
+            </button>
+            <button class="btn btn-secondary" id="lbBurstBtn" onclick="burstTest()">
+              Burst 10 Requests
+            </button>
+          </div>
+          <div class="results-box" id="lbResults">
+            <p class="placeholder-text">Click "Send Request" to test load balancer distribution</p>
+          </div>
+          <!-- Container Distribution Chart -->
+          <div class="distribution-section" id="distributionSection" style="display:none;">
+            <h3>Container Distribution</h3>
+            <div class="distribution-bars" id="distributionBars"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Server Info Panel -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2>📡 Server Info</h2>
+          <p>Real-time information from the backend API</p>
+        </div>
+        <div class="panel-body">
+          <button class="btn btn-primary" onclick="fetchServerInfo()">
+            Fetch Server Info
+          </button>
+          <div class="info-grid" id="serverInfo">
+            <p class="placeholder-text">Click the button to fetch server info</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Items API Panel -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2>📦 Items API</h2>
+          <p>Sample data returned from the backend</p>
+        </div>
+        <div class="panel-body">
+          <button class="btn btn-primary" onclick="fetchItems()">
+            Fetch Items
+          </button>
+          <div class="items-list" id="itemsList">
+            <p class="placeholder-text">Click the button to load items</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Echo Test Panel -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2>🔁 Echo Test</h2>
+          <p>Send JSON data and see it echoed back with container info</p>
+        </div>
+        <div class="panel-body">
+          <textarea class="echo-input" id="echoInput" placeholder='{"message": "Hello ECS!"}'></textarea>
+          <button class="btn btn-primary" onclick="sendEcho()">
+            Send Echo
+          </button>
+          <div class="results-box" id="echoResults">
+            <p class="placeholder-text">Enter JSON and click "Send Echo"</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Request Log -->
+    <section class="panel log-panel">
+      <div class="panel-header">
+        <h2>📋 Request Log</h2>
+        <button class="btn btn-ghost" onclick="clearLog()">Clear</button>
+      </div>
+      <div class="log-entries" id="logEntries">
+        <p class="placeholder-text">Requests will appear here...</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>ECS Sample App &bull; Deployed with ❤️ on Amazon ECS + ALB</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
